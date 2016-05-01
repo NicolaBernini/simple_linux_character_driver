@@ -6,12 +6,24 @@
 
 #define BUFFER_SIZE 1024
 
+/**
+ * @brief The Buffer used for the copy 
+ * @note Allocated on the Static Data Segment 
+ * @note Linker visibility is limited to the current file 
+ */
 static char device_buffer[BUFFER_SIZE];
 
 int openCount = 0;
 int closeCount = 0;
 int placeholder = 0;
 
+/**
+ * @brief It moves the data from the internal `device_buffer` to the user space `buffer` in multiple iterations 
+ * @param pfile Driver File. TBD: If not used why passed ? 
+ * @note Interface IN: copy_to_user() is the function actually performing the copy into the User Space of certain amount of byte (i.e. probably not the full buffer)
+ * @note Interface OUT: the amount of bytes copyed in this iteration 
+ * @note: It should be used by another module in a cycle to make sure the full copy has been performed 
+ */
 ssize_t simple_char_driver_read (struct file *pfile, char __user *buffer, size_t length, loff_t *offset)
 {
 	/* pfile = driver file
@@ -19,8 +31,16 @@ ssize_t simple_char_driver_read (struct file *pfile, char __user *buffer, size_t
 	 * length = length of what is to be read (using cat will give something like 6000+ bytes)
 	 * offset = variable to store offset for ONE read cycle.
 	 */
-
+	 
+	/**
+	  * @brief The Amount of Data Read 
+	  */
 	int bytesRead;
+	
+	/**
+	  * @brief The Amount to be Read 
+	  * @note The `offset` represents the pointer to the first byte to be read 
+	  */ 
 	int bytesToRead = BUFFER_SIZE - *offset;
 
 	// If we are at the end of the file, STOP READING!
@@ -30,6 +50,8 @@ ssize_t simple_char_driver_read (struct file *pfile, char __user *buffer, size_t
 	}
 	
 	// Get bytes read by subtracting return of copy_to_user (returns unread bytes)
+	//** Every time it tries to copy the full amount of remaining bytes 
+	//** TBD: Maybe it could be provided a faster multithreading implementation 
 	bytesRead = bytesToRead - copy_to_user(buffer, device_buffer + *offset, bytesToRead);
 	printk(KERN_ALERT "READING with Simple Character Driver. Reading %d bytes\n", bytesRead);
 
